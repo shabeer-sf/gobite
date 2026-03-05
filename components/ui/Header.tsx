@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ShoppingBag } from "lucide-react";
+import { ChevronLeft, Clock, ShoppingBag, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React from "react";
 import { useStore } from "../../context/StoreContext";
@@ -23,7 +23,7 @@ export function Header({
   rightAction,
 }: HeaderProps) {
   const router = useRouter();
-  const { cart } = useStore();
+  const { cart, user } = useStore();
 
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
 
@@ -55,7 +55,25 @@ export function Header({
         </div>
 
         <div className="flex items-center gap-2">
+          {user && (
+            <div className="flex items-center gap-1.5 bg-accentLight px-2.5 py-1.5 rounded-full mr-1">
+              <div className="w-5 h-5 rounded-full bg-[#FFD9C8] flex items-center justify-center text-primary">
+                <User size={12} />
+              </div>
+              <span className="text-xs font-semibold text-primary max-w-[72px] truncate">
+                {user.name.split(" ")[0]}
+              </span>
+            </div>
+          )}
+
           {rightAction}
+
+          <button
+            onClick={() => router.push("/orders")}
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-bgBase hover:bg-gray-200 transition-colors"
+          >
+            <Clock size={20} className="text-inkMid" />
+          </button>
           {showCart && (
             <button
               onClick={() => router.push("/cart")}
