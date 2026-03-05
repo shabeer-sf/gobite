@@ -14,19 +14,14 @@ import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { useStore } from "../context/StoreContext";
 
-type AuthView =
-  | "login_otp_request"
-  | "login_otp_verify"
-  | "login_password"
-  | "signup";
+type AuthView = "login" | "signup" | "signup_otp_verify";
 
 export default function GetStartedScreen() {
   const router = useRouter();
   const { login } = useStore();
-  const [view, setView] = useState<AuthView>("login_otp_request");
+  const [view, setView] = useState<AuthView>("login");
   const [form, setForm] = useState({
     name: "",
-    username: "",
     email: "",
     phone: "",
     password: "",
@@ -40,39 +35,7 @@ export default function GetStartedScreen() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSendOtp = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.phone.trim()) {
-      setError("Please enter your phone number.");
-      return;
-    }
-    setError("");
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setView("login_otp_verify");
-    }, 800);
-  };
-
-  const handleVerifyOtp = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      if (form.otp === "1234") {
-        login({
-          name: form.name || "Demo User",
-          phone: form.phone,
-          role: "customer",
-        });
-        router.push("/menu");
-      } else {
-        setError("Invalid demo code. Please use 1234.");
-      }
-    }, 800);
-  };
-
-  const handlePasswordLogin = (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.phone.trim() || !form.password.trim()) {
       setError("Please enter both phone and password.");
@@ -81,6 +44,7 @@ export default function GetStartedScreen() {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
+      // Demo validation
       if (form.password === "demo123") {
         login({
           name: "Demo User",
@@ -94,11 +58,10 @@ export default function GetStartedScreen() {
     }, 800);
   };
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignupSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (
       !form.name.trim() ||
-      !form.username.trim() ||
       !form.email.trim() ||
       !form.phone.trim() ||
       !form.password.trim() ||
@@ -113,41 +76,51 @@ export default function GetStartedScreen() {
     }
     setError("");
     setLoading(true);
+    // Send OTP mock
     setTimeout(() => {
       setLoading(false);
-      login({
-        name: form.name,
-        username: form.username,
-        email: form.email,
-        phone: form.phone,
-        role: "customer",
-      });
-      router.push("/menu");
+      setView("signup_otp_verify");
+    }, 800);
+  };
+
+  const handleVerifyOtp = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      if (form.otp === "1234") {
+        login({
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          role: "customer",
+        });
+        router.push("/menu");
+      } else {
+        setError("Invalid demo code. Please use 1234.");
+      }
     }, 800);
   };
 
   const getTitle = () => {
     switch (view) {
-      case "login_otp_request":
-      case "login_password":
+      case "login":
         return "Welcome Back";
-      case "login_otp_verify":
-        return "Verify Number";
       case "signup":
         return "Create Account";
+      case "signup_otp_verify":
+        return "Verify Mobile";
     }
   };
 
   const getSubtitle = () => {
     switch (view) {
-      case "login_otp_request":
-        return "Login with your phone number";
-      case "login_password":
+      case "login":
         return "Enter your phone and password";
-      case "login_otp_verify":
-        return `Code sent to ${form.phone}`;
       case "signup":
         return "Sign up to begin ordering";
+      case "signup_otp_verify":
+        return `We sent a code to ${form.phone}`;
     }
   };
 
@@ -196,94 +169,9 @@ export default function GetStartedScreen() {
             </div>
           )}
 
-          {/* ----- REQUEST OTP VIEW ----- */}
-          {view === "login_otp_request" && (
-            <form onSubmit={handleSendOtp} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-inkMid uppercase tracking-wider ml-1">
-                  Phone Number
-                </label>
-                <div className="relative">
-                  <Phone
-                    size={18}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-inkLight"
-                  />
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={form.phone}
-                    onChange={handleChange}
-                    placeholder="+1 (555) 000-0000"
-                    className="w-full bg-white border-2 border-borderLite rounded-2xl pl-11 pr-4 py-3 text-base text-ink focus:outline-none focus:border-primary transition-colors"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-primary hover:bg-primaryHover text-white font-bold text-base py-4 rounded-2xl shadow-[0_6px_20px_rgba(255,107,53,0.3)] transition-all flex items-center justify-center disabled:opacity-70 mt-2"
-              >
-                {loading ? "Sending..." : "Send Verification Code"}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setView("login_password")}
-                className="w-full py-2 text-sm font-semibold text-primary hover:text-primaryHover transition-colors mt-2"
-              >
-                Login with Password instead
-              </button>
-            </form>
-          )}
-
-          {/* ----- VERIFY OTP VIEW ----- */}
-          {view === "login_otp_verify" && (
-            <form onSubmit={handleVerifyOtp} className="space-y-5">
-              <div className="space-y-1 text-center">
-                <input
-                  type="text"
-                  name="otp"
-                  maxLength={4}
-                  value={form.otp}
-                  onChange={(e) =>
-                    setForm({ ...form, otp: e.target.value.replace(/\D/g, "") })
-                  }
-                  placeholder="• • • •"
-                  className="w-full text-center bg-white border-2 border-borderLite rounded-2xl py-5 text-4xl font-black text-ink tracking-[0.5em] focus:outline-none focus:border-primary transition-colors"
-                  autoFocus
-                />
-              </div>
-
-              <div className="bg-accentLight px-4 py-3 rounded-xl flex items-center gap-2">
-                <Copy size={14} className="text-primary flex-shrink-0" />
-                <p className="text-xs text-inkMid">
-                  Demo code: <strong className="text-ink">1234</strong>
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-primary hover:bg-primaryHover text-white font-bold text-base py-4 rounded-2xl shadow-[0_6px_20px_rgba(255,107,53,0.3)] transition-all flex items-center justify-center disabled:opacity-70"
-                >
-                  {loading ? "Verifying..." : "Verify & Start Ordering"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setView("login_otp_request")}
-                  className="w-full py-2 text-sm font-semibold text-inkMid hover:text-ink transition-colors"
-                >
-                  Edit phone number
-                </button>
-              </div>
-            </form>
-          )}
-
           {/* ----- PASSWORD LOGIN VIEW ----- */}
-          {view === "login_password" && (
-            <form onSubmit={handlePasswordLogin} className="space-y-4">
+          {view === "login" && (
+            <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-inkMid uppercase tracking-wider ml-1">
                   Phone Number
@@ -337,20 +225,12 @@ export default function GetStartedScreen() {
               >
                 {loading ? "Logging in..." : "Login"}
               </button>
-
-              <button
-                type="button"
-                onClick={() => setView("login_otp_request")}
-                className="w-full py-2 text-sm font-semibold text-primary hover:text-primaryHover transition-colors mt-2"
-              >
-                Login with OTP instead
-              </button>
             </form>
           )}
 
           {/* ----- SIGNUP VIEW ----- */}
           {view === "signup" && (
-            <form onSubmit={handleSignup} className="space-y-3">
+            <form onSubmit={handleSignupSubmit} className="space-y-3">
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-inkMid uppercase tracking-wider ml-1">
                   Full Name
@@ -371,31 +251,22 @@ export default function GetStartedScreen() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-inkMid uppercase tracking-wider ml-1">
-                    Username
-                  </label>
-                  <input
-                    type="text"
-                    name="username"
-                    value={form.username}
-                    onChange={handleChange}
-                    placeholder="johndoe"
-                    className="w-full bg-white border-2 border-borderLite rounded-2xl px-4 py-2.5 text-sm text-ink focus:outline-none focus:border-primary transition-colors"
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-inkMid uppercase tracking-wider ml-1">
+                  Phone
+                </label>
+                <div className="relative">
+                  <Phone
+                    size={18}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-inkLight"
                   />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-inkMid uppercase tracking-wider ml-1">
-                    Phone
-                  </label>
                   <input
                     type="tel"
                     name="phone"
                     value={form.phone}
                     onChange={handleChange}
                     placeholder="(555)"
-                    className="w-full bg-white border-2 border-borderLite rounded-2xl px-4 py-2.5 text-sm text-ink focus:outline-none focus:border-primary transition-colors"
+                    className="w-full bg-white border-2 border-borderLite rounded-2xl pl-11 pr-4 py-2.5 text-sm text-ink focus:outline-none focus:border-primary transition-colors"
                   />
                 </div>
               </div>
@@ -465,41 +336,87 @@ export default function GetStartedScreen() {
                 disabled={loading}
                 className="w-full bg-primary hover:bg-primaryHover text-white font-bold text-base py-3.5 rounded-2xl shadow-[0_6px_20px_rgba(255,107,53,0.3)] transition-all flex items-center justify-center disabled:opacity-70 mt-4"
               >
-                {loading ? "Creating Account..." : "Sign Up"}
+                {loading ? "Sending Code..." : "Next"}
               </button>
             </form>
           )}
 
+          {/* ----- VERIFY OTP VIEW (For Signup) ----- */}
+          {view === "signup_otp_verify" && (
+            <form onSubmit={handleVerifyOtp} className="space-y-5">
+              <div className="space-y-1 text-center">
+                <input
+                  type="text"
+                  name="otp"
+                  maxLength={4}
+                  value={form.otp}
+                  onChange={(e) =>
+                    setForm({ ...form, otp: e.target.value.replace(/\D/g, "") })
+                  }
+                  placeholder="• • • •"
+                  className="w-full text-center bg-white border-2 border-borderLite rounded-2xl py-5 text-4xl font-black text-ink tracking-[0.5em] focus:outline-none focus:border-primary transition-colors"
+                  autoFocus
+                />
+              </div>
+
+              <div className="bg-accentLight px-4 py-3 rounded-xl flex items-center gap-2">
+                <Copy size={14} className="text-primary flex-shrink-0" />
+                <p className="text-xs text-inkMid">
+                  Demo code: <strong className="text-ink">1234</strong>
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-primary hover:bg-primaryHover text-white font-bold text-base py-4 rounded-2xl shadow-[0_6px_20px_rgba(255,107,53,0.3)] transition-all flex items-center justify-center disabled:opacity-70"
+                >
+                  {loading ? "Verifying..." : "Verify & Create Account"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView("signup")}
+                  className="w-full py-2 text-sm font-semibold text-inkMid hover:text-ink transition-colors"
+                >
+                  Edit details
+                </button>
+              </div>
+            </form>
+          )}
+
           {/* ----- BOTTOM TOGGLE LINKS ----- */}
-          <div className="pt-2 border-t border-borderLite mt-2 text-center pb-2">
-            {view === "signup" ? (
-              <p className="text-sm text-inkMid">
-                Already have an account?{" "}
-                <button
-                  onClick={() => {
-                    setError("");
-                    setView("login_otp_request");
-                  }}
-                  className="text-primary font-bold hover:underline"
-                >
-                  Log In
-                </button>
-              </p>
-            ) : (
-              <p className="text-sm text-inkMid">
-                Don't have an account?{" "}
-                <button
-                  onClick={() => {
-                    setError("");
-                    setView("signup");
-                  }}
-                  className="text-primary font-bold hover:underline"
-                >
-                  Sign Up
-                </button>
-              </p>
-            )}
-          </div>
+          {view !== "signup_otp_verify" && (
+            <div className="pt-2 border-t border-borderLite mt-2 text-center pb-2">
+              {view === "signup" ? (
+                <p className="text-sm text-inkMid">
+                  Already have an account?{" "}
+                  <button
+                    onClick={() => {
+                      setError("");
+                      setView("login");
+                    }}
+                    className="text-primary font-bold hover:underline"
+                  >
+                    Log In
+                  </button>
+                </p>
+              ) : (
+                <p className="text-sm text-inkMid">
+                  Don't have an account?{" "}
+                  <button
+                    onClick={() => {
+                      setError("");
+                      setView("signup");
+                    }}
+                    className="text-primary font-bold hover:underline"
+                  >
+                    Sign Up
+                  </button>
+                </p>
+              )}
+            </div>
+          )}
 
           <p className="text-center text-[10px] text-inkLight leading-relaxed pt-1">
             By continuing, you agree to our{" "}
@@ -519,8 +436,8 @@ export default function GetStartedScreen() {
           </p>
         </motion.div>
 
-        {/* Feature Highlights beneath - Hidden on signup to save space */}
-        {view !== "signup" && (
+        {/* Feature Highlights beneath - Hidden on signup/otp to save space */}
+        {view === "login" && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

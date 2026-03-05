@@ -31,7 +31,6 @@ export interface User {
   phone: string;
   email?: string;
   role: UserRole;
-  username?: string;
   password?: string;
 }
 
