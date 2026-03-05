@@ -29,6 +29,7 @@ export interface User {
   id?: string;
   name: string;
   phone: string;
+  email?: string;
   role: UserRole;
   username?: string;
   password?: string;
