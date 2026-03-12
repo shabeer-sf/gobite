@@ -1,29 +1,22 @@
 "use client";
 
 import { motion } from "framer-motion";
-import {
-  Copy,
-  Navigation,
-  QrCode,
-  Lock,
-  Phone,
-  User,
-  Mail,
-} from "lucide-react";
+import { Copy, Navigation, QrCode, Lock, Phone, User, Mail, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { useStore } from "../context/StoreContext";
 
-type AuthView = "login" | "signup" | "signup_otp_verify";
+type AuthView = "welcome" | "login" | "signup" | "signup_otp_verify";
 
 export default function GetStartedScreen() {
   const router = useRouter();
   const { login } = useStore();
-  const [view, setView] = useState<AuthView>("login");
+  const [view, setView] = useState<AuthView>("welcome");
   const [form, setForm] = useState({
     name: "",
     email: "",
     phone: "",
+    identifier: "", // used for login
     password: "",
     confirmPassword: "",
     otp: "",
@@ -35,10 +28,15 @@ export default function GetStartedScreen() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  const handleGuestLogin = () => {
+    // Navigate directly without an account, or create a guest session
+    router.push("/menu");
+  };
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.phone.trim() || !form.password.trim()) {
-      setError("Please enter both phone and password.");
+    if (!form.identifier.trim() || !form.password.trim()) {
+      setError("Please enter your email or phone, and password.");
       return;
     }
     setLoading(true);
@@ -48,7 +46,8 @@ export default function GetStartedScreen() {
       if (form.password === "demo123") {
         login({
           name: "Demo User",
-          phone: form.phone,
+          phone: form.identifier, // we can map identifier to phone or email later
+          email: form.identifier.includes("@") ? form.identifier : undefined,
           role: "customer",
         });
         router.push("/menu");
@@ -60,14 +59,12 @@ export default function GetStartedScreen() {
 
   const handleSignupSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      !form.name.trim() ||
-      !form.email.trim() ||
-      !form.phone.trim() ||
-      !form.password.trim() ||
-      !form.confirmPassword.trim()
-    ) {
-      setError("Please fill in all fields.");
+    if (!form.name.trim() || !form.password.trim() || !form.confirmPassword.trim()) {
+      setError("Please fill in name and password.");
+      return;
+    }
+    if (!form.email.trim() && !form.phone.trim()) {
+      setError("Please provide either an email or a phone number.");
       return;
     }
     if (form.password !== form.confirmPassword) {
@@ -91,8 +88,8 @@ export default function GetStartedScreen() {
       if (form.otp === "1234") {
         login({
           name: form.name,
-          email: form.email,
-          phone: form.phone,
+          email: form.email || undefined,
+          phone: form.phone || "N/A",
           role: "customer",
         });
         router.push("/menu");
@@ -104,23 +101,27 @@ export default function GetStartedScreen() {
 
   const getTitle = () => {
     switch (view) {
+      case "welcome":
+        return "Gobite";
       case "login":
         return "Welcome Back";
       case "signup":
         return "Create Account";
       case "signup_otp_verify":
-        return "Verify Mobile";
+        return form.phone ? "Verify Mobile" : "Verify Email";
     }
   };
 
   const getSubtitle = () => {
     switch (view) {
+      case "welcome":
+        return "Quickly order delicious food to your table.";
       case "login":
-        return "Enter your phone and password";
+        return "Enter your email or phone and password";
       case "signup":
         return "Sign up to begin ordering";
       case "signup_otp_verify":
-        return `We sent a code to ${form.phone}`;
+        return `We sent a code to ${form.phone || form.email}`;
     }
   };
 
@@ -132,22 +133,27 @@ export default function GetStartedScreen() {
 
       {/* Main Container */}
       <div className="relative z-10 flex-1 flex flex-col px-6 py-8 max-w-md mx-auto w-full">
-        {/* Logo Section */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="flex justify-center mt-6 mb-6"
-        >
-          <div className="flex items-center gap-2">
-            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg">
-              <QrCode size={28} />
+        {/* Header section (hidden on welcome since welcome centers the logo) */}
+        {view !== "welcome" && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="flex justify-center mt-6 mb-6"
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg">
+                <QrCode size={28} />
+              </div>
+              <span className="text-3xl font-black text-ink tracking-tight">
+                Gobite
+              </span>
             </div>
-            <span className="text-3xl font-black text-ink tracking-tight">
-              Gobite
-            </span>
-          </div>
-        </motion.div>
+          </motion.div>
+        )}
+        
+        {/* Welcome spacer */}
+        {view === "welcome" && <div className="mt-16" />}
 
         <motion.div
           key={view}
@@ -156,11 +162,21 @@ export default function GetStartedScreen() {
           transition={{ duration: 0.4 }}
           className="bg-white/80 backdrop-blur-md border border-white p-6 rounded-3xl shadow-xl space-y-5"
         >
-          <div className="text-center space-y-1">
+          {view === "welcome" && (
+             <div className="flex justify-center mt-2 mb-6">
+               <div className="flex flex-col items-center gap-3">
+                 <div className="w-20 h-20 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg mx-auto">
+                   <QrCode size={44} />
+                 </div>
+               </div>
+             </div>
+          )}
+
+          <div className="text-center space-y-2">
             <h1 className="text-2xl font-extrabold text-ink tracking-tight">
               {getTitle()}
             </h1>
-            <p className="text-sm text-inkMid">{getSubtitle()}</p>
+            <p className="text-sm text-inkMid font-medium px-2">{getSubtitle()}</p>
           </div>
 
           {error && (
@@ -169,24 +185,71 @@ export default function GetStartedScreen() {
             </div>
           )}
 
+          {/* ----- WELCOME VIEW ----- */}
+          {view === "welcome" && (
+            <div className="space-y-4 mt-6">
+              <div className="space-y-2">
+                <p className="text-[11px] font-bold text-inkMid uppercase tracking-wider text-center pt-2">
+                  How would you like to proceed?
+                </p>
+                <button
+                  onClick={handleGuestLogin}
+                  className="w-full bg-white border-2 border-borderLite hover:border-primary text-ink hover:text-primary font-bold text-base py-4 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-sm"
+                >
+                  <Navigation size={18} />
+                  <span>Skip & continue as a guest</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-4 my-2">
+                <div className="flex-1 h-px bg-borderLite" />
+                <span className="text-xs font-semibold text-inkLight">OR</span>
+                <div className="flex-1 h-px bg-borderLite" />
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    setError("");
+                    setView("login");
+                  }}
+                  className="w-full bg-primary hover:bg-primaryHover text-white font-bold text-base py-4 rounded-2xl shadow-[0_6px_20px_rgba(255,107,53,0.3)] transition-all flex items-center justify-center"
+                >
+                  Login to your account
+                </button>
+                <div className="pt-2 text-center">
+                  <p className="text-sm text-inkMid">
+                    Don't have an account?{" "}
+                    <button
+                      onClick={() => {
+                        setError("");
+                        setView("signup");
+                      }}
+                      className="text-primary font-bold hover:underline"
+                    >
+                      Sign Up
+                    </button>
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ----- PASSWORD LOGIN VIEW ----- */}
           {view === "login" && (
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleLogin} className="space-y-4 mt-2">
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-inkMid uppercase tracking-wider ml-1">
-                  Phone Number
+                  Email or Phone
                 </label>
                 <div className="relative">
-                  <Phone
-                    size={18}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-inkLight"
-                  />
+                  <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-inkLight" />
                   <input
-                    type="tel"
-                    name="phone"
-                    value={form.phone}
+                    type="text"
+                    name="identifier"
+                    value={form.identifier}
                     onChange={handleChange}
-                    placeholder="+1 (555) 000-0000"
+                    placeholder="john@example.com or (555)"
                     className="w-full bg-white border-2 border-borderLite rounded-2xl pl-11 pr-4 py-3 text-base text-ink focus:outline-none focus:border-primary transition-colors"
                   />
                 </div>
@@ -196,10 +259,7 @@ export default function GetStartedScreen() {
                   Password
                 </label>
                 <div className="relative">
-                  <Lock
-                    size={18}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-inkLight"
-                  />
+                  <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-inkLight" />
                   <input
                     type="password"
                     name="password"
@@ -230,16 +290,13 @@ export default function GetStartedScreen() {
 
           {/* ----- SIGNUP VIEW ----- */}
           {view === "signup" && (
-            <form onSubmit={handleSignupSubmit} className="space-y-3">
+            <form onSubmit={handleSignupSubmit} className="space-y-3 mt-2">
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-inkMid uppercase tracking-wider ml-1">
                   Full Name
                 </label>
                 <div className="relative">
-                  <User
-                    size={18}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-inkLight"
-                  />
+                  <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-inkLight" />
                   <input
                     type="text"
                     name="name"
@@ -251,55 +308,50 @@ export default function GetStartedScreen() {
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-inkMid uppercase tracking-wider ml-1">
-                  Phone
-                </label>
-                <div className="relative">
-                  <Phone
-                    size={18}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-inkLight"
-                  />
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={form.phone}
-                    onChange={handleChange}
-                    placeholder="(555)"
-                    className="w-full bg-white border-2 border-borderLite rounded-2xl pl-11 pr-4 py-2.5 text-sm text-ink focus:outline-none focus:border-primary transition-colors"
-                  />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-inkMid uppercase tracking-wider ml-1">
+                    Phone
+                  </label>
+                  <div className="relative">
+                    <Phone size={16} className="absolute text-inkLight left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={form.phone}
+                      onChange={handleChange}
+                      placeholder="(555)"
+                      className="w-full bg-white border-2 border-borderLite rounded-2xl pl-9 pr-3 py-2.5 text-sm text-ink focus:outline-none focus:border-primary transition-colors"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-inkMid uppercase tracking-wider ml-1">
+                    Email
+                  </label>
+                  <div className="relative">
+                    <Mail size={16} className="absolute text-inkLight left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="email"
+                      name="email"
+                      value={form.email}
+                      onChange={handleChange}
+                      placeholder="john@..."
+                      className="w-full bg-white border-2 border-borderLite rounded-2xl pl-9 pr-3 py-2.5 text-sm text-ink focus:outline-none focus:border-primary transition-colors"
+                    />
+                  </div>
                 </div>
               </div>
-
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-inkMid uppercase tracking-wider ml-1">
-                  Email
-                </label>
-                <div className="relative">
-                  <Mail
-                    size={18}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-inkLight"
-                  />
-                  <input
-                    type="email"
-                    name="email"
-                    value={form.email}
-                    onChange={handleChange}
-                    placeholder="john@example.com"
-                    className="w-full bg-white border-2 border-borderLite rounded-2xl pl-11 pr-4 py-2.5 text-sm text-ink focus:outline-none focus:border-primary transition-colors"
-                  />
-                </div>
-              </div>
-
+              <p className="text-[10px] text-inkLight ml-1 leading-tight mb-2">
+                * Please provide either a phone number or an email.
+              </p>
+              
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-inkMid uppercase tracking-wider ml-1">
                   Password
                 </label>
                 <div className="relative">
-                  <Lock
-                    size={18}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-inkLight"
-                  />
+                  <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-inkLight" />
                   <input
                     type="password"
                     name="password"
@@ -310,16 +362,13 @@ export default function GetStartedScreen() {
                   />
                 </div>
               </div>
-
+              
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-inkMid uppercase tracking-wider ml-1">
                   Confirm Password
                 </label>
                 <div className="relative">
-                  <Lock
-                    size={18}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-inkLight"
-                  />
+                  <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-inkLight" />
                   <input
                     type="password"
                     name="confirmPassword"
@@ -334,7 +383,7 @@ export default function GetStartedScreen() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-primary hover:bg-primaryHover text-white font-bold text-base py-3.5 rounded-2xl shadow-[0_6px_20px_rgba(255,107,53,0.3)] transition-all flex items-center justify-center disabled:opacity-70 mt-4"
+                className="w-full bg-primary hover:bg-primaryHover text-white font-bold text-base py-4 rounded-2xl shadow-[0_6px_20px_rgba(255,107,53,0.3)] transition-all flex items-center justify-center disabled:opacity-70 mt-4"
               >
                 {loading ? "Sending Code..." : "Next"}
               </button>
@@ -385,8 +434,8 @@ export default function GetStartedScreen() {
             </form>
           )}
 
-          {/* ----- BOTTOM TOGGLE LINKS ----- */}
-          {view !== "signup_otp_verify" && (
+          {/* ----- BOTTOM TOGGLE LINKS & BACK TO WELCOME ----- */}
+          {view !== "welcome" && view !== "signup_otp_verify" && (
             <div className="pt-2 border-t border-borderLite mt-2 text-center pb-2">
               {view === "signup" ? (
                 <p className="text-sm text-inkMid">
@@ -415,9 +464,19 @@ export default function GetStartedScreen() {
                   </button>
                 </p>
               )}
+              
+              <button
+                  onClick={() => {
+                    setError("");
+                    setView("welcome");
+                  }}
+                  className="mt-4 text-xs font-semibold text-inkLight hover:text-ink transition-colors flex items-center justify-center gap-1 mx-auto"
+                >
+                  Return to Welcome
+              </button>
             </div>
           )}
-
+          
           <p className="text-center text-[10px] text-inkLight leading-relaxed pt-1">
             By continuing, you agree to our{" "}
             <button
@@ -435,33 +494,6 @@ export default function GetStartedScreen() {
             </button>
           </p>
         </motion.div>
-
-        {/* Feature Highlights beneath - Hidden on signup/otp to save space */}
-        {view === "login" && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-            className="mt-auto pt-6 flex justify-center gap-6 pb-4"
-          >
-            <div className="flex flex-col items-center gap-1.5 opacity-70">
-              <div className="w-10 h-10 bg-white/50 rounded-full flex items-center justify-center shadow-sm text-ink">
-                <Navigation size={18} />
-              </div>
-              <span className="text-[10px] uppercase font-bold text-inkMid">
-                No Signup Needed
-              </span>
-            </div>
-            <div className="flex flex-col items-center gap-1.5 opacity-70">
-              <div className="w-10 h-10 bg-white/50 rounded-full flex items-center justify-center shadow-sm text-ink">
-                <QrCode size={18} />
-              </div>
-              <span className="text-[10px] uppercase font-bold text-inkMid">
-                Live Menu
-              </span>
-            </div>
-          </motion.div>
-        )}
       </div>
     </div>
   );
