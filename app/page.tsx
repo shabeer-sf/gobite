@@ -308,38 +308,36 @@ export default function GetStartedScreen() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-inkMid uppercase tracking-wider ml-1">
-                    Phone
-                  </label>
-                  <div className="relative">
-                    <Phone size={16} className="absolute text-inkLight left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={form.phone}
-                      onChange={handleChange}
-                      placeholder="(555)"
-                      className="w-full bg-white border-2 border-borderLite rounded-2xl pl-9 pr-3 py-2.5 text-sm text-ink focus:outline-none focus:border-primary transition-colors"
-                    />
-                  </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-inkMid uppercase tracking-wider ml-1">
+                  Phone
+                </label>
+                <div className="relative">
+                  <Phone size={16} className="absolute text-inkLight left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={form.phone}
+                    onChange={handleChange}
+                    placeholder="(555)"
+                    className="w-full bg-white border-2 border-borderLite rounded-2xl pl-9 pr-3 py-2.5 text-sm text-ink focus:outline-none focus:border-primary transition-colors"
+                  />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-inkMid uppercase tracking-wider ml-1">
-                    Email
-                  </label>
-                  <div className="relative">
-                    <Mail size={16} className="absolute text-inkLight left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="email"
-                      name="email"
-                      value={form.email}
-                      onChange={handleChange}
-                      placeholder="john@..."
-                      className="w-full bg-white border-2 border-borderLite rounded-2xl pl-9 pr-3 py-2.5 text-sm text-ink focus:outline-none focus:border-primary transition-colors"
-                    />
-                  </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-inkMid uppercase tracking-wider ml-1">
+                  Email
+                </label>
+                <div className="relative">
+                  <Mail size={16} className="absolute text-inkLight left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    name="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    placeholder="john@..."
+                    className="w-full bg-white border-2 border-borderLite rounded-2xl pl-9 pr-3 py-2.5 text-sm text-ink focus:outline-none focus:border-primary transition-colors"
+                  />
                 </div>
               </div>
               <p className="text-[10px] text-inkLight ml-1 leading-tight mb-2">

@@ -1,6 +1,6 @@
 "use client";
 
-import { ShieldCheck, UtensilsCrossed } from "lucide-react";
+import { ShieldCheck, UtensilsCrossed, MapPin, ChevronDown } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { CartFloatingButton } from "../../components/menu/CartFloatingButton";
 import { CategoryTabs } from "../../components/menu/CategoryTabs";
@@ -37,11 +37,18 @@ export default function MenuPage() {
 
   return (
     <div className="flex-1 flex flex-col bg-bgBase relative pb-28">
-      <Header
-        subtitle={getSubtitle()}
-        showCart
-        onSubtitleClick={() => setShowTablePicker(true)}
-      />
+      <Header showCart />
+
+      <button 
+        onClick={() => setShowTablePicker(true)}
+        className="w-full bg-white border-b border-borderLite px-4 py-3.5 flex items-center gap-2 hover:bg-gray-50 transition-colors"
+      >
+        <MapPin size={18} className="text-primary flex-shrink-0" />
+        <span className="text-sm font-bold text-ink flex-1 text-left">
+          {HOTEL_NAME} &bull; <span className="text-primary">{getSubtitle()}</span>
+        </span>
+        <ChevronDown size={16} className="text-inkLight flex-shrink-0" />
+      </button>
 
       <CategoryTabs
         categories={CATEGORIES}

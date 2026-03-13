@@ -47,28 +47,15 @@ export function Header({
               <Image 
                 src="/logo.png" 
                 alt={HOTEL_NAME} 
-                width={32} 
-                height={32} 
+                width={66} 
+                height={66} 
                 className="object-contain"
                 priority
               />
             )}
             <div>
-              {title ? (
+              {title && (
                 <h1 className="text-base font-bold text-ink">{title}</h1>
-              ) : (
-                <h1 className="text-lg font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-primary to-orange-500">
-                  {HOTEL_NAME}
-                </h1>
-              )}
-              {subtitle && (
-                <button
-                  onClick={onSubtitleClick}
-                  disabled={!onSubtitleClick}
-                  className={`text-xs text-inkMid text-left pt-0.5 ${onSubtitleClick ? "hover:text-primary transition-colors cursor-pointer border-b border-dashed border-inkLight" : ""}`}
-                >
-                  {subtitle}
-                </button>
               )}
             </div>
           </div>
