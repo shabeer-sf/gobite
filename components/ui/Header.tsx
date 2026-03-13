@@ -1,9 +1,11 @@
 "use client";
 
 import { ChevronLeft, Clock, ShoppingBag, User } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import React from "react";
 import { useStore } from "../../context/StoreContext";
+import { HOTEL_NAME } from "../../utils/data";
 
 interface HeaderProps {
   title?: string;
@@ -40,17 +42,35 @@ export function Header({
             </button>
           )}
 
-          <div>
-            {title && <h1 className="text-base font-bold text-ink">{title}</h1>}
-            {subtitle && (
-              <button
-                onClick={onSubtitleClick}
-                disabled={!onSubtitleClick}
-                className={`text-xs text-inkMid text-left ${onSubtitleClick ? "hover:text-primary transition-colors cursor-pointer border-b border-dashed border-inkLight" : ""}`}
-              >
-                {subtitle}
-              </button>
+          <div className="flex items-center gap-2.5">
+            {!title && (
+              <Image 
+                src="/logo.png" 
+                alt={HOTEL_NAME} 
+                width={32} 
+                height={32} 
+                className="object-contain"
+                priority
+              />
             )}
+            <div>
+              {title ? (
+                <h1 className="text-base font-bold text-ink">{title}</h1>
+              ) : (
+                <h1 className="text-lg font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-primary to-orange-500">
+                  {HOTEL_NAME}
+                </h1>
+              )}
+              {subtitle && (
+                <button
+                  onClick={onSubtitleClick}
+                  disabled={!onSubtitleClick}
+                  className={`text-xs text-inkMid text-left pt-0.5 ${onSubtitleClick ? "hover:text-primary transition-colors cursor-pointer border-b border-dashed border-inkLight" : ""}`}
+                >
+                  {subtitle}
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

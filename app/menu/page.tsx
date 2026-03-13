@@ -31,8 +31,8 @@ export default function MenuPage() {
       : menuItems.filter((i) => i.category === activeCategory);
 
   const getSubtitle = () => {
-    if (tableNumber === "Takeaway") return `Takeaway · ${HOTEL_NAME}`;
-    return `Table ${tableNumber || "?"} · ${HOTEL_NAME}`;
+    if (tableNumber === "Takeaway") return `Takeaway`;
+    return `Table ${tableNumber || "?"}`;
   };
 
   return (
