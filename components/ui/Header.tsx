@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, Clock, ShoppingBag, User, FileText, Shield, Info, LifeBuoy, X } from "lucide-react";
+import { ChevronLeft, Clock, ShoppingBag, User, FileText, Shield, Info, LifeBuoy, X, Menu } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
@@ -48,12 +48,15 @@ export function Header({
             </button>
           )}
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-3">
             {!title && (
-              <button 
-                onClick={openDrawer} 
-                className="focus:outline-none hover:opacity-80 transition-opacity"
-              >
+              <>
+                <button
+                  onClick={openDrawer}
+                  className="w-10 h-10 rounded-full flex items-center justify-center bg-bgBase hover:bg-gray-200 transition-colors focus:outline-none"
+                >
+                  <Menu size={22} className="text-ink" />
+                </button>
                 <Image 
                   src="/logo.png" 
                   alt={HOTEL_NAME} 
@@ -62,7 +65,7 @@ export function Header({
                   className="object-contain"
                   priority
                 />
-              </button>
+              </>
             )}
             <div>
               {title && (
@@ -131,14 +134,17 @@ export function Header({
               className="fixed top-0 left-0 bottom-0 w-[280px] bg-white z-[60] shadow-2xl flex flex-col"
             >
               {/* Drawer Header */}
-              <div className="p-6 border-b border-borderLite flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Image src="/logo.png" alt="Gobite" width={48} height={48} className="object-contain" />
-                  <span className="text-xl font-bold text-ink">Gobite</span>
+              <div className="p-8 border-b border-borderLite flex flex-col items-center bg-[#F7F5F2] rounded-b-[2rem] shadow-sm">
+                <div className="w-full flex justify-end mb-2">
+                  <button onClick={closeDrawer} className="p-2 hover:bg-white rounded-full text-inkMid transition-colors shadow-sm">
+                    <X size={20} />
+                  </button>
                 </div>
-                <button onClick={closeDrawer} className="p-2 hover:bg-bgBase rounded-full text-inkMid transition-colors">
-                  <X size={20} />
-                </button>
+                <div className="flex flex-col items-center gap-2">
+                  <Image src="/logo.png" alt="Gobite" width={80} height={80} className="object-contain" />
+                  <span className="text-2xl font-black text-primary tracking-tighter uppercase">Gobite</span>
+                  <span className="text-[10px] font-bold text-inkLight tracking-[0.2em] uppercase -mt-1">Premium Ordering</span>
+                </div>
               </div>
 
               {/* Drawer Links */}
