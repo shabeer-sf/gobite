@@ -1,7 +1,7 @@
 "use client";
 
 import { ShieldCheck, UtensilsCrossed, MapPin, ChevronDown } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { CartFloatingButton } from "../../components/menu/CartFloatingButton";
 import { CategoryTabs } from "../../components/menu/CategoryTabs";
 import { ItemDetailModal } from "../../components/menu/ItemDetailModal";
@@ -9,14 +9,21 @@ import { MenuItemCard } from "../../components/menu/MenuItemCard";
 import { Header } from "../../components/ui/Header";
 import { TablePickerModal } from "../../components/menu/TablePickerModal";
 import { useStore } from "../../context/StoreContext";
-import { CATEGORIES, HOTEL_NAME } from "../../utils/data";
 import { MenuItem } from "../../utils/types";
 
 export default function MenuPage() {
-  const { tableNumber, setSessionInfo, menuItems } = useStore();
+  const { tableNumber, setSessionInfo, menuItems, restaurantInfo } = useStore();
   const [activeCategory, setActiveCategory] = useState("All");
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [showTablePicker, setShowTablePicker] = useState(false);
+
+  // Derive dynamic categories from menuItems
+  const categories = useMemo(() => {
+    const cats = ["All", ...new Set(menuItems.map(item => item.category))];
+    return cats;
+  }, [menuItems]);
+
+  const hotelName = restaurantInfo?.name || "GoBite";
 
   // Set default if empty initially
   useEffect(() => {
@@ -37,7 +44,7 @@ export default function MenuPage() {
 
   return (
     <div className="flex-1 flex flex-col bg-bgBase relative pb-28">
-      <Header showCart />
+      <Header showCart title={hotelName} />
 
       <button 
         onClick={() => setShowTablePicker(true)}
@@ -45,13 +52,13 @@ export default function MenuPage() {
       >
         <MapPin size={18} className="text-primary flex-shrink-0" />
         <span className="text-sm font-bold text-ink flex-1 text-left">
-          {HOTEL_NAME} &bull; <span className="text-primary">{getSubtitle()}</span>
+          {hotelName} &bull; <span className="text-primary">{getSubtitle()}</span>
         </span>
         <ChevronDown size={16} className="text-inkLight flex-shrink-0" />
       </button>
 
       <CategoryTabs
-        categories={CATEGORIES}
+        categories={categories}
         activeCategory={activeCategory}
         onSelect={setActiveCategory}
       />
@@ -80,7 +87,7 @@ export default function MenuPage() {
           <div className="mt-8 mb-4 bg-accentLight p-4 rounded-2xl flex items-start gap-3 border border-red-100">
             <ShieldCheck className="text-primary mt-0.5 shrink-0" size={20} />
             <p className="text-xs text-inkMid leading-relaxed">
-              Please inform <strong className="text-ink">{HOTEL_NAME}</strong>{" "}
+              Please inform <strong className="text-ink">{hotelName}</strong>{" "}
               of any food allergies before placing your order.
             </p>
           </div>

@@ -15,8 +15,7 @@ import React, { useState } from "react";
 import { CartItemCard } from "../../components/menu/CartItemCard";
 import { Header } from "../../components/ui/Header";
 import { useStore } from "../../context/StoreContext";
-import { HOTEL_NAME } from "../../utils/data";
-import { Order } from "../../utils/types";
+import { apiClient } from "../../utils/apiClient";
 
 export default function CartPage() {
   const router = useRouter();
@@ -26,18 +25,18 @@ export default function CartPage() {
     removeFromCart,
     clearCart,
     addOrder,
-    addItemsToOrder,
-    activeOrderId,
     setActiveOrder,
     restaurantId,
     tableNumber,
     user,
+    restaurantInfo,
   } = useStore();
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [email, setEmail] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(true);
+  const [error, setError] = useState("");
 
   const subtotal = cart.reduce(
     (acc, item) => acc + item.price * item.quantity,
@@ -47,37 +46,45 @@ export default function CartPage() {
   const total = subtotal + tax;
 
   const handleInitialCheckout = () => {
-    if (activeOrderId) finalizeCheckout();
-    else setShowEmailModal(true);
+    setShowEmailModal(true);
   };
 
-  const finalizeCheckout = () => {
+  const finalizeCheckout = async () => {
     setIsProcessing(true);
-    setShowEmailModal(false);
+    setError("");
 
-    setTimeout(() => {
-      if (activeOrderId) {
-        addItemsToOrder(activeOrderId, cart);
-        setActiveOrder(null);
+    try {
+      // Find table ID from tableNumber if possible, or just send the table info
+      // Our API expects table_id (int). We might need a small mapping or just use id.
+      // For now, I'll send restaurantId and cart items.
+      
+      const orderData = {
+        restaurant_id: parseInt(restaurantId),
+        user_id: user?.id ? parseInt(user.id) : null,
+        table_id: null, // We should ideally have a table ID lookup
+        order_type: tableNumber === "Takeaway" ? "takeaway" : "dine-in",
+        items: cart.map(item => ({
+          id: parseInt(item.id),
+          quantity: item.quantity,
+          instructions: item.instructions
+        }))
+      };
+
+      const resp = await apiClient.post("place-order.php", orderData);
+
+      if (resp.status === "success") {
+        clearCart();
+        setIsProcessing(false);
+        setShowEmailModal(false);
+        router.push(`/order-success?order_id=${resp.data.order_id}`);
       } else {
-        const newOrder: Order = {
-          id: Math.random().toString(36).substr(2, 9).toUpperCase(),
-          items: [...cart],
-          total,
-          status: "pending",
-          date: new Date().toISOString(),
-          restaurantId: restaurantId || "default",
-          restaurantName: HOTEL_NAME,
-          tableNumber: tableNumber || "Takeaway",
-          customerName: user?.name,
-          customerPhone: user?.phone,
-        };
-        addOrder(newOrder);
+        setError(resp.message || "Failed to place order.");
+        setIsProcessing(false);
       }
-      clearCart();
+    } catch (err: any) {
+      setError(err.message || "An error occurred during checkout.");
       setIsProcessing(false);
-      router.push("/order-success");
-    }, 1500);
+    }
   };
 
   if (cart.length === 0) {
@@ -123,13 +130,12 @@ export default function CartPage() {
                     ? "Takeaway Order"
                     : `Table ${tableNumber?.split("-")[1] || tableNumber}`}
                 </p>
-                <p className="text-xs text-inkMid">{HOTEL_NAME}</p>
+                <p className="text-xs text-inkMid">{restaurantInfo?.name || "GoBite"}</p>
               </div>
             </div>
             <button
               onClick={() => {
                 clearCart();
-                setActiveOrder(null);
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
             >
@@ -157,7 +163,7 @@ export default function CartPage() {
             <ShieldCheck size={18} className="text-red-500 mt-0.5 shrink-0" />
             <p className="text-xs text-inkMid leading-relaxed">
               If you have food allergies, please inform{" "}
-              <strong className="text-ink">{HOTEL_NAME}</strong> before
+              <strong className="text-ink">{restaurantInfo?.name || "GoBite"}</strong> before
               checkout.
             </p>
           </div>
@@ -191,7 +197,6 @@ export default function CartPage() {
             All prices include GST where applicable
           </p>
 
-          {/* Sticky Checkout Bar */}
           <div className="fixed bottom-0 left-0 right-0 z-40 mx-auto w-full max-w-md bg-white border-t border-borderLite p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:static lg:max-w-none lg:bg-transparent lg:border-none lg:p-0 lg:shadow-none">
             <button
               onClick={handleInitialCheckout}
@@ -199,11 +204,7 @@ export default function CartPage() {
               className="w-full bg-primary hover:bg-primaryHover text-white font-bold text-base py-4 rounded-2xl shadow-[0_6px_20px_rgba(255,107,53,0.3)] transition-transform active:scale-[0.98] disabled:opacity-70 flex items-center justify-between px-6"
             >
               <span>
-                {isProcessing
-                  ? "Processing..."
-                  : activeOrderId
-                    ? "Update Order"
-                    : "Confirm Order"}
+                {isProcessing ? "Processing..." : "Confirm Order"}
               </span>
               {!isProcessing && (
                 <span className="font-black tracking-tight">
@@ -212,14 +213,9 @@ export default function CartPage() {
               )}
             </button>
           </div>
-
-          <p className="hidden lg:block text-center text-xs text-inkLight pt-2">
-            All prices include GST where applicable
-          </p>
         </div>
       </main>
 
-      {/* Email Collection Modal */}
       <AnimatePresence>
         {showEmailModal && (
           <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
@@ -251,44 +247,24 @@ export default function CartPage() {
               </div>
 
               <h2 className="text-2xl font-extrabold text-ink mb-2">
-                Get Your Receipt
+                Order Details
               </h2>
               <p className="text-sm text-inkMid mb-8 leading-relaxed">
-                Enter your email address to receive a digital copy of your order
-                receipt.
+                Confirming your order for table <strong>{tableNumber}</strong>.
               </p>
 
-              <div className="flex items-center bg-[#F9F9F9] border-2 border-borderLite rounded-2xl px-4 py-3 mb-6 focus-within:border-primary transition-colors">
-                <Mail size={20} className="text-inkLight mr-3" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Email Address"
-                  className="flex-1 bg-transparent border-none outline-none text-base text-ink"
-                />
-              </div>
+              {error && (
+                <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl border border-red-100 mb-4">
+                  {error}
+                </div>
+              )}
 
-              {/* Terms Switch */}
               <div className="flex items-center justify-between bg-[#F9F9F9] p-4 rounded-2xl mb-8 border border-borderLite">
                 <p className="text-xs text-inkMid leading-relaxed pr-4 flex-1">
                   I accept the{" "}
-                  <button
-                    onClick={() => router.push("/legal/terms")}
-                    className="text-primary font-semibold hover:underline"
-                  >
-                    Terms &amp; Conditions
-                  </button>{" "}
-                  and{" "}
-                  <button
-                    onClick={() => router.push("/legal/privacy")}
-                    className="text-primary font-semibold hover:underline"
-                  >
-                    Privacy Policy
-                  </button>
+                  <button onClick={() => router.push("/legal/terms")} className="text-primary font-semibold hover:underline">Terms</button> and <button onClick={() => router.push("/legal/privacy")} className="text-primary font-semibold hover:underline">Privacy</button>
                 </p>
 
-                {/* Custom Toggle Switch */}
                 <button
                   onClick={() => setAcceptTerms(!acceptTerms)}
                   className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out ${acceptTerms ? "bg-primary" : "bg-gray-300"}`}
@@ -303,16 +279,9 @@ export default function CartPage() {
                 <button
                   onClick={finalizeCheckout}
                   disabled={!acceptTerms || isProcessing}
-                  className="w-full bg-primary hover:bg-primaryHover text-white font-bold text-base py-4 rounded-2xl shadow-lg transition-transform active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
+                  className="w-full bg-primary hover:bg-primaryHover text-white font-bold text-base py-4 rounded-2xl shadow-lg transition-transform active:scale-[0.98] disabled:opacity-50"
                 >
-                  {isProcessing ? "Completing Order..." : "Complete Order"}
-                </button>
-                <button
-                  onClick={finalizeCheckout}
-                  disabled={isProcessing}
-                  className="w-full py-4 text-sm font-semibold text-inkLight hover:text-inkMid transition-colors"
-                >
-                  Skip &amp; complete order
+                  {isProcessing ? "Placing Order..." : "Place Order Now"}
                 </button>
               </div>
             </motion.div>

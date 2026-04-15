@@ -5,6 +5,7 @@ import { Copy, Navigation, QrCode, Lock, Phone, User, Mail, ArrowRight } from "l
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { useStore } from "../context/StoreContext";
+import { apiClient } from "../utils/apiClient";
 
 type AuthView = "welcome" | "login" | "signup" | "signup_otp_verify";
 
@@ -29,35 +30,44 @@ export default function GetStartedScreen() {
   };
 
   const handleGuestLogin = () => {
-    // Navigate directly without an account, or create a guest session
     router.push("/menu");
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.identifier.trim() || !form.password.trim()) {
       setError("Please enter your email or phone, and password.");
       return;
     }
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      // Demo validation
-      if (form.password === "demo123") {
+    setError("");
+
+    try {
+      const resp = await apiClient.post("login.php", {
+        email: form.identifier,
+        password: form.password
+      });
+
+      if (resp.status === "success") {
         login({
-          name: "Demo User",
-          phone: form.identifier, // we can map identifier to phone or email later
-          email: form.identifier.includes("@") ? form.identifier : undefined,
+          id: resp.data.user.id.toString(),
+          name: resp.data.user.name,
+          email: resp.data.user.email,
+          phone: resp.data.user.phone,
           role: "customer",
         });
         router.push("/menu");
       } else {
-        setError("Invalid password. Please use 'demo123'.");
+        setError(resp.message || "Invalid credentials.");
       }
-    }, 800);
+    } catch (err: any) {
+      setError(err.message || "Login failed. Check server connection.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSignupSubmit = (e: React.FormEvent) => {
+  const handleSignupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !form.password.trim() || !form.confirmPassword.trim()) {
       setError("Please fill in name and password.");
@@ -71,32 +81,32 @@ export default function GetStartedScreen() {
       setError("Passwords do not match.");
       return;
     }
+    
     setError("");
     setLoading(true);
-    // Send OTP mock
-    setTimeout(() => {
-      setLoading(false);
-      setView("signup_otp_verify");
-    }, 800);
-  };
 
-  const handleVerifyOtp = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      if (form.otp === "1234") {
-        login({
-          name: form.name,
-          email: form.email || undefined,
-          phone: form.phone || "N/A",
-          role: "customer",
-        });
-        router.push("/menu");
+    try {
+      const resp = await apiClient.post("signup.php", {
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        password: form.password
+      });
+
+      if (resp.status === "success") {
+        // Since we removed dummy OTP, we can just login or go to login view
+        setError("");
+        setView("login");
+        setForm({...form, identifier: form.email || form.phone});
+        alert("Registration successful! Please login.");
       } else {
-        setError("Invalid demo code. Please use 1234.");
+        setError(resp.message || "Registration failed.");
       }
-    }, 800);
+    } catch (err: any) {
+      setError(err.message || "Signup failed.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getTitle = () => {
@@ -133,7 +143,7 @@ export default function GetStartedScreen() {
 
       {/* Main Container */}
       <div className="relative z-10 flex-1 flex flex-col px-6 py-8 max-w-md mx-auto w-full">
-        {/* Header section (hidden on welcome since welcome centers the logo) */}
+        {/* Header section */}
         {view !== "welcome" && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
@@ -152,7 +162,6 @@ export default function GetStartedScreen() {
           </motion.div>
         )}
         
-        {/* Welcome spacer */}
         {view === "welcome" && <div className="mt-16" />}
 
         <motion.div
@@ -271,13 +280,6 @@ export default function GetStartedScreen() {
                 </div>
               </div>
 
-              <div className="bg-accentLight px-4 py-3 rounded-xl flex items-center gap-2 mt-2">
-                <Copy size={14} className="text-primary flex-shrink-0" />
-                <p className="text-xs text-inkMid">
-                  Demo password: <strong className="text-ink">demo123</strong>
-                </p>
-              </div>
-
               <button
                 type="submit"
                 disabled={loading}
@@ -340,9 +342,6 @@ export default function GetStartedScreen() {
                   />
                 </div>
               </div>
-              <p className="text-[10px] text-inkLight ml-1 leading-tight mb-2">
-                * Please provide either a phone number or an email.
-              </p>
               
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-inkMid uppercase tracking-wider ml-1">
@@ -383,56 +382,12 @@ export default function GetStartedScreen() {
                 disabled={loading}
                 className="w-full bg-primary hover:bg-primaryHover text-white font-bold text-base py-4 rounded-2xl shadow-[0_6px_20px_rgba(255,107,53,0.3)] transition-all flex items-center justify-center disabled:opacity-70 mt-4"
               >
-                {loading ? "Sending Code..." : "Next"}
+                {loading ? "Creating Account..." : "Next"}
               </button>
             </form>
           )}
 
-          {/* ----- VERIFY OTP VIEW (For Signup) ----- */}
-          {view === "signup_otp_verify" && (
-            <form onSubmit={handleVerifyOtp} className="space-y-5">
-              <div className="space-y-1 text-center">
-                <input
-                  type="text"
-                  name="otp"
-                  maxLength={4}
-                  value={form.otp}
-                  onChange={(e) =>
-                    setForm({ ...form, otp: e.target.value.replace(/\D/g, "") })
-                  }
-                  placeholder="• • • •"
-                  className="w-full text-center bg-white border-2 border-borderLite rounded-2xl py-5 text-4xl font-black text-ink tracking-[0.5em] focus:outline-none focus:border-primary transition-colors"
-                  autoFocus
-                />
-              </div>
-
-              <div className="bg-accentLight px-4 py-3 rounded-xl flex items-center gap-2">
-                <Copy size={14} className="text-primary flex-shrink-0" />
-                <p className="text-xs text-inkMid">
-                  Demo code: <strong className="text-ink">1234</strong>
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-primary hover:bg-primaryHover text-white font-bold text-base py-4 rounded-2xl shadow-[0_6px_20px_rgba(255,107,53,0.3)] transition-all flex items-center justify-center disabled:opacity-70"
-                >
-                  {loading ? "Verifying..." : "Verify & Create Account"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setView("signup")}
-                  className="w-full py-2 text-sm font-semibold text-inkMid hover:text-ink transition-colors"
-                >
-                  Edit details
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* ----- BOTTOM TOGGLE LINKS & BACK TO WELCOME ----- */}
+          {/* ----- BOTTOM TOGGLE LINKS ----- */}
           {view !== "welcome" && view !== "signup_otp_verify" && (
             <div className="pt-2 border-t border-borderLite mt-2 text-center pb-2">
               {view === "signup" ? (

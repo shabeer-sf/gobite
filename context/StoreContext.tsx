@@ -7,7 +7,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { DUMMY_ORDERS, MENU_ITEMS } from "../utils/data";
+import { apiClient } from "../utils/apiClient";
 import {
   CartItem,
   MenuItem,
@@ -59,6 +59,8 @@ interface StoreContextType {
   tableNumber: string;
   setSessionInfo: (restId: string, table: string) => void;
   isLoading: boolean;
+  restaurantInfo: any;
+  fetchOrders: () => Promise<void>;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -77,37 +79,89 @@ export const StoreProvider = ({ children }: { children?: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [menuItems, setMenuItems] = useState<MenuItem[]>(MENU_ITEMS);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [restaurantId, setRestaurantId] = useState("default");
+  const [restaurantInfo, setRestaurantInfo] = useState<any>(null);
   const [tableNumber, setTableNumber] = useState("");
   const [activeOrderId, setActiveOrder] = useState<string | null>(null);
 
-  // Load from localStorage on mount
-  useEffect(() => {
+  const fetchOrders = async () => {
+    if (!user?.id) return;
     try {
-      if (typeof window !== "undefined") {
-        const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
-        const storedCart = localStorage.getItem(STORAGE_KEYS.CART);
-        const storedOrders = localStorage.getItem(STORAGE_KEYS.ORDERS);
-        const storedTable = localStorage.getItem(STORAGE_KEYS.TABLE);
-        const storedMenu = localStorage.getItem(STORAGE_KEYS.MENU);
-
-        if (storedUser) setUser(JSON.parse(storedUser));
-        if (storedCart) setCart(JSON.parse(storedCart));
-        if (storedOrders) {
-          setOrders(JSON.parse(storedOrders));
-        } else {
-          setOrders(DUMMY_ORDERS);
-        }
-        if (storedTable) setTableNumber(storedTable);
-        if (storedMenu) setMenuItems(JSON.parse(storedMenu));
+      const resp = await apiClient.get(`get-orders.php?user_id=${user.id}`);
+      if (resp.status === "success") {
+        setOrders(resp.data);
       }
     } catch (e) {
-      console.error("Error loading stored data:", e);
-    } finally {
-      setIsLoading(false);
-      setIsInitialized(true);
+      console.error("Error fetching orders:", e);
     }
+  };
+
+  // Load from localStorage on mount and initialize from API
+  useEffect(() => {
+    const initStore = async () => {
+      try {
+        let currentUser = null;
+        if (typeof window !== "undefined") {
+          const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
+          const storedCart = localStorage.getItem(STORAGE_KEYS.CART);
+          const storedOrders = localStorage.getItem(STORAGE_KEYS.ORDERS);
+          const storedTable = localStorage.getItem(STORAGE_KEYS.TABLE);
+
+          if (storedUser) {
+            currentUser = JSON.parse(storedUser);
+            setUser(currentUser);
+          }
+          if (storedCart) setCart(JSON.parse(storedCart));
+          if (storedOrders) setOrders(JSON.parse(storedOrders));
+          if (storedTable) setTableNumber(storedTable);
+        }
+
+        // Fetch Dynamic Data from API
+        const restRes = await apiClient.get("get-restaurant.php");
+        if (restRes.status === "success") {
+          setRestaurantInfo(restRes.data);
+          setRestaurantId(restRes.data.id.toString());
+          
+          // Fetch Menu for this restaurant
+          const menuRes = await apiClient.get(`get-menu.php?restaurant_id=${restRes.data.id}`);
+          if (menuRes.status === "success") {
+            const allItems: MenuItem[] = [];
+            menuRes.data.forEach((cat: any) => {
+              cat.items.forEach((item: any) => {
+                allItems.push({
+                  id: item.id.toString(),
+                  name: item.name,
+                  description: item.description,
+                  price: parseFloat(item.price),
+                  category: cat.name,
+                  image: item.image_url_full,
+                  popular: !!parseInt(item.is_popular),
+                  available: !!parseInt(item.available)
+                });
+              });
+            });
+            setMenuItems(allItems);
+          }
+        }
+
+        // Fetch user specific orders if logged in
+        if (currentUser?.id) {
+           const ordRes = await apiClient.get(`get-orders.php?user_id=${currentUser.id}`);
+           if (ordRes.status === "success") {
+              setOrders(ordRes.data);
+           }
+        }
+
+      } catch (e) {
+        console.error("Error initializing store:", e);
+      } finally {
+        setIsLoading(false);
+        setIsInitialized(true);
+      }
+    };
+
+    initStore();
   }, []);
 
   // Sync to localStorage
@@ -121,14 +175,19 @@ export const StoreProvider = ({ children }: { children?: ReactNode }) => {
     }
   }, [user, cart, orders, tableNumber, menuItems, isInitialized]);
 
-  const login = (newUser: User) => setUser(newUser);
+  const login = (newUser: User) => {
+    setUser(newUser);
+    fetchOrders();
+  };
   const logout = () => {
     setUser(null);
     setCart([]);
+    setOrders([]);
     setTableNumber("");
     if (typeof window !== "undefined") {
       localStorage.removeItem(STORAGE_KEYS.USER);
       localStorage.removeItem(STORAGE_KEYS.CART);
+      localStorage.removeItem(STORAGE_KEYS.ORDERS);
       localStorage.removeItem(STORAGE_KEYS.TABLE);
     }
   };
@@ -321,6 +380,8 @@ export const StoreProvider = ({ children }: { children?: ReactNode }) => {
         tableNumber,
         setSessionInfo,
         isLoading,
+        restaurantInfo,
+        fetchOrders,
       }}
     >
       {children}
